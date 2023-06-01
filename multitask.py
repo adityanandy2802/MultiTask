@@ -7,8 +7,6 @@ plt.style.use("ggplot")
 from tqdm import trange
 import scipy.stats as stats
 import streamlit as st
-import warnings
-warnings.filterwarnings("ignore")
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
