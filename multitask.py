@@ -55,9 +55,9 @@ def multi_task_aq_pi(model, x, tasks, iterations = 10, samples = 10):
   p = np.array([])
   for i in range(task_num):
     if i != 0:
-      p *= pi(model, x, 100, task_num)[:,i]
+      p *= pi(model, x, iterations, task_num)[:,i]
     else:
-      p = pi(model, x, 100, task_num)[:,i]
+      p = pi(model, x, iterations, task_num)[:,i]
   return np.argsort(p, axis = 0)[-samples:]
 
 def multi_task_aq_random(x, samples = 10):
@@ -82,9 +82,19 @@ def multi_task_aq_ei(model, x, tasks, iterations = 10, samples = 10):
   return np.argsort(p, axis = 0)[-samples:]
 
 def ranking(model, x, tasks, iterations = 10, samples = 10):
-  _, std = mc_dropout(model, x, 100, task_num)
+  _, std = mc_dropout(model, x, iterations, task_num)
   a = np.argsort(np.sum(np.argsort(std, axis = 0), axis = 1), axis = 0)
   return a[-samples:]
+
+def round_robin(model, x, tasks, iterations = 10, samples = 10):
+  _, std = mc_dropout(model, x, iterations, tasks)
+  idx = np.array([])
+  for i in range(samples):
+    if (i==0):
+      idx = np.array(np.argsort(std, axis = 0)[:, 0][-1]).reshape(-1,1).ravel()
+    else:
+      idx = np.concatenate((idx, np.array(np.argsort(std, axis = 0)[:, i%tasks][-i]).reshape(-1,1).ravel()))
+  return idx
 
 def active_learning(x, y, known, epochs, samples, mc_iterations, task_num, heuristic, mybar, initdisplay = True):
   torch.manual_seed(42)
@@ -145,8 +155,10 @@ def active_learning(x, y, known, epochs, samples, mc_iterations, task_num, heuri
       idx = multi_task_aq_ei(model, x_unknown, task_num, mc_iterations, samples)
     elif heuristic == "ranking":
       idx = ranking(model, x_unknown, task_num, mc_iterations, samples)
+    elif heuristic == "round_robin":
+      idx = round_robin(model, x_unknown, task_num, mc_iterations, samples)
     else:
-      print("Choose Correct Heuristic. Legal heuristics: [`pi`, `ei`, `random`, `prod_std`, `avg_std`, `ranking`]")
+      print("Choose Correct Heuristic. Legal heuristics: [`pi`, `ei`, `random`, `prod_std`, `avg_std`, `ranking`, `round_robin`]")
       break
     
     mask1 = torch.full(x_unknown.shape, False)
@@ -263,7 +275,7 @@ y = torch.tensor([]).to(device)
 for val in list_:
   y = torch.cat((y, val), axis = 1)
 
-heuristics = ["pi", "ei", "prod_std", "avg_std", "ranking"]
+heuristics = ["pi", "ei", "prod_std", "avg_std", "ranking", "round_robin"]
 heuristic = st.radio('Select a heuristic:', heuristics)
 
 epochs = st.slider("Choose Iterations: ", 0, 300)
