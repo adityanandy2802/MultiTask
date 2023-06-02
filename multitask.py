@@ -205,7 +205,7 @@ def active_learning(x, y, known, epochs, samples, mc_iterations, task_num, heuri
     ax.fill_between(x.cpu().detach(), mean_pred - std_pred, mean_pred + std_pred, color = "gray", alpha = 0.5, label = "Uncertainty")
     ax.plot(x.cpu().detach(), y[:,i].cpu().detach(), color = "red", label = "True Plot")
     loss = lossfn(mean_pred, y[:, i].cpu().detach())
-    ax.set_title("Loss: {}".format(float(loss)))
+    ax.set_title("Loss: {}".format(round(float(loss),4)))
     ax.legend(loc = "best")
 
   plt.show()
