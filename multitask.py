@@ -86,28 +86,29 @@ def ranking(model, x, tasks, iterations = 10, samples = 10):
   a = np.argsort(np.sum(np.argsort(std, axis = 0), axis = 1), axis = 0)
   return a[-samples:]
 
-def active_learning(x, y, known, epochs, samples, mc_iterations, task_num, heuristic):
+def active_learning(x, y, known, epochs, samples, mc_iterations, task_num, heuristic, mybar, initdisplay = True):
   torch.manual_seed(42)
   np.random.seed(42)
 
   idx = np.random.choice(x.shape[0], known)
   x_known, y_known = x[idx], y[idx]
   
-  st.header("Datasets")
-  fig = plt.figure(figsize = (10,7))
-  for i in range(task_num):
-    ax = fig.add_subplot(2, task_num, i+1)
-    ax.plot(x.cpu().detach(), y[:,i].cpu().detach(), color = "blue")
-  plt.show()
-  st.pyplot()
-  
-  st.header("Initial Points")
-  fig = plt.figure(figsize = (10,7))
-  for i in range(task_num):
-    ax = fig.add_subplot(2, task_num, i+1)
-    ax.scatter(x_known.cpu().detach(), y_known[:,i].cpu().detach(), marker = "o", color = "red")
-  plt.show()
-  st.pyplot()
+  if initdisplay:
+    st.header("Datasets")
+    fig = plt.figure(figsize = (10,7))
+    for i in range(task_num):
+      ax = fig.add_subplot(2, task_num, i+1)
+      ax.plot(x.cpu().detach(), y[:,i].cpu().detach(), color = "blue")
+    plt.show()
+    st.pyplot()
+    
+    st.header("Initial Points")
+    fig = plt.figure(figsize = (10,7))
+    for i in range(task_num):
+      ax = fig.add_subplot(2, task_num, i+1)
+      ax.scatter(x_known.cpu().detach(), y_known[:,i].cpu().detach(), marker = "o", color = "red")
+    plt.show()
+    st.pyplot()
 
   mask1 = torch.full(x.shape, True)
   mask1[idx] = False
@@ -123,7 +124,6 @@ def active_learning(x, y, known, epochs, samples, mc_iterations, task_num, heuri
   fig = plt.figure(figsize = (10,7))
   iterations = 100
   
-  mybar = st.progress(0, text = "Learning...")
   for epoch in trange(epochs):
     for iteration in range(iterations):
       model.train()
@@ -170,22 +170,26 @@ def active_learning(x, y, known, epochs, samples, mc_iterations, task_num, heuri
       print("Loss: {}".format(loss))
 
     if int((epoch+1)*100/epochs)<80:
-      mybar.progress(int((epoch+1)*100/epochs), text = "Learning...")
+      mybar.progress(int((epoch+1)*50/epochs + int(not initdisplay)*50), text = "Learning...")
     else:
       if int((epoch+1)*100/epochs)<100:
-        mybar.progress(int((epoch+1)*100/epochs), text = "Almost There...")
+        mybar.progress(int((epoch+1)*50/epochs + int(not initdisplay)*50), text = "Almost There...")
       else:
-        mybar.progress(int((epoch+1)*100/epochs), text = "Done!")
+        mybar.progress(int((epoch+1)*50/epochs + int(not initdisplay)*50), text = "Done!")
   
+  st.header(heuristic)
+
+  model.eval()
   fig = plt.figure(figsize = (10,7))
   for i in range(task_num):
     ax = fig.add_subplot(2, task_num, i+1)
-    ax.scatter(x_known.cpu().detach(), y_known[:,i].cpu().detach(), marker = "x", color = "green")
-    ax.plot(x.cpu().detach(), model(x.reshape(-1,1))[:,i].cpu().detach(), color = "blue")
-    ax.plot(x.cpu().detach(), y[:,i].cpu().detach(), color = "red")
+    ax.scatter(x_known.cpu().detach(), y_known[:,i].cpu().detach(), marker = "x", color = "green", label = "Known")
+    ax.plot(x.cpu().detach(), model(x.reshape(-1,1))[:,i].cpu().detach(), color = "blue", label = "Predictions")
+    ax.plot(x.cpu().detach(), y[:,i].cpu().detach(), color = "red", label = "True Plot")
+    ax.legend(loc = "best")
   plt.show()
   st.pyplot()
-  st.write("Final loss: ", (lossfn(model(x.reshape(-1,1)), y)))
+  st.code("Final loss: {}".format(lossfn(model(x.reshape(-1,1)), y)), language = "python")
 
 class regression_non_linear(nn.Module):
   def __init__(self, input_features, output_features, hidden_units = 8):
@@ -244,8 +248,10 @@ y = torch.tensor([]).to(device)
 for val in list_:
   y = torch.cat((y, val), axis = 1)
 
-heuristics = ["pi", "ei", "random", "prod_std", "avg_std", "ranking"]
+heuristics = ["pi", "ei", "prod_std", "avg_std", "ranking"]
 heuristic = st.radio('Select a heuristic:', heuristics)
+
+epochs = st.slider("Choose Iterations: ", 0, 300)
 
 if "play" not in st.session_state:
   st.session_state["play"] = False
@@ -256,4 +262,7 @@ if play:
   st.session_state["play"] = True
 
 if st.session_state["play"]:
-  active_learning(x, y, 10, epochs = 50, samples = 3, mc_iterations = 2000, task_num = task_num, heuristic = heuristic)
+  mybar = st.progress(0, text = "Learning...")
+  active_learning(x, y, 10, epochs = epochs, samples = 1, mc_iterations = 2000, task_num = task_num, heuristic = heuristic, mybar = mybar)
+  active_learning(x, y, 10, epochs = epochs, samples = 1, mc_iterations = 2000, task_num = task_num, heuristic = "random", mybar = mybar, initdisplay = False)
+  st.session_state["play"] = False
