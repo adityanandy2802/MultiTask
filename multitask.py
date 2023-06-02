@@ -86,15 +86,9 @@ def ranking(model, x, tasks, iterations = 10, samples = 10):
   a = np.argsort(np.sum(np.argsort(std, axis = 0), axis = 1), axis = 0)
   return a[-samples:]
 
-def round_robin(model, x, tasks, iterations = 10, samples = 10):
+def round_robin(model, x, tasks, column, iterations = 10, samples = 10):
   _, std = mc_dropout(model, x, iterations, tasks)
-  idx = np.array([])
-  for i in range(samples):
-    if (i==0):
-      idx = np.array(np.argsort(std, axis = 0)[:, 0][-1]).reshape(-1,1).ravel()
-    else:
-      idx = np.concatenate((idx, np.array(np.argsort(std, axis = 0)[:, i%tasks][-i]).reshape(-1,1).ravel()))
-  return idx
+  return np.argsort(std, axis = 0)[:, column][-samples: ]
 
 def active_learning(x, y, known, epochs, samples, mc_iterations, task_num, heuristic, mybar, initdisplay = True):
   torch.manual_seed(42)
@@ -156,7 +150,7 @@ def active_learning(x, y, known, epochs, samples, mc_iterations, task_num, heuri
     elif heuristic == "ranking":
       idx = ranking(model, x_unknown, task_num, mc_iterations, samples)
     elif heuristic == "round_robin":
-      idx = round_robin(model, x_unknown, task_num, mc_iterations, samples)
+      idx = round_robin(model, x_unknown, task_num, epoch%task_num, mc_iterations, samples)
     else:
       print("Choose Correct Heuristic. Legal heuristics: [`pi`, `ei`, `random`, `prod_std`, `avg_std`, `ranking`, `round_robin`]")
       break
