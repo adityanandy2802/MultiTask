@@ -183,10 +183,25 @@ def active_learning(x, y, known, epochs, samples, mc_iterations, task_num, heuri
   fig = plt.figure(figsize = (10,7))
   for i in range(task_num):
     ax = fig.add_subplot(2, task_num, i+1)
+
+    pred = torch.tensor([])
+    for j in range(100):
+      enable_dropout(model)
+      if j==0:
+        pred = model(x.reshape(-1,1))[:,i].cpu().detach().reshape(-1, model(x.reshape(-1,1))[:,i].cpu().detach().shape[0])
+      else:
+        pred = torch.cat((pred, model(x.reshape(-1,1))[:,i].cpu().detach().reshape(-1, model(x.reshape(-1,1))[:,i].cpu().detach().shape[0])), dim = 0)
+    mean_pred = torch.mean(pred, axis = 0)
+    std_pred = torch.std(pred, axis = 0)
+
     ax.scatter(x_known.cpu().detach(), y_known[:,i].cpu().detach(), marker = "x", color = "green", label = "Known")
-    ax.plot(x.cpu().detach(), model(x.reshape(-1,1))[:,i].cpu().detach(), color = "blue", label = "Predictions")
+    ax.plot(x.cpu().detach(), mean_pred, color = "blue", label = "Predictions")
+    ax.fill_between(x.cpu().detach(), mean_pred - std_pred, mean_pred + std_pred, color = "gray", alpha = 0.5, label = "Uncertainty")
     ax.plot(x.cpu().detach(), y[:,i].cpu().detach(), color = "red", label = "True Plot")
+    loss = lossfn(mean_pred, y[:, i].cpu().detach())
+    ax.set_title("Loss: {}".format(float(loss)))
     ax.legend(loc = "best")
+
   plt.show()
   st.pyplot()
   st.code("Final loss: {}".format(lossfn(model(x.reshape(-1,1)), y)), language = "python")
