@@ -53,11 +53,11 @@ def ei(model, x, iterations, tasks, xi = 0.001):
 
 def multi_task_aq_pi(model, x, tasks, iterations = 10, samples = 10):
   p = np.array([])
-  for i in range(task_num):
+  for i in range(tasks):
     if i != 0:
-      p *= pi(model, x, iterations, task_num)[:,i]
+      p *= pi(model, x, iterations, tasks)[:,i]
     else:
-      p = pi(model, x, iterations, task_num)[:,i]
+      p = pi(model, x, iterations, tasks)[:,i]
   return np.argsort(p, axis = 0)[-samples:]
 
 def multi_task_aq_random(x, samples = 10):
@@ -74,15 +74,15 @@ def multi_task_aq_prod_std(model, x, tasks, iterations = 10, samples = 10):
 
 def multi_task_aq_ei(model, x, tasks, iterations = 10, samples = 10):
   p = np.array([])
-  for i in range(task_num):
+  for i in range(tasks):
     if i != 0:
-      p += ei(model, x, 100, task_num)[:,i]
+      p += ei(model, x, iterations, tasks)[:,i]
     else:
-      p = ei(model, x, 100, task_num)[:,i]
+      p = ei(model, x, iterations, tasks)[:,i]
   return np.argsort(p, axis = 0)[-samples:]
 
 def ranking(model, x, tasks, iterations = 10, samples = 10):
-  _, std = mc_dropout(model, x, iterations, task_num)
+  _, std = mc_dropout(model, x, iterations, tasks)
   a = np.argsort(np.sum(np.argsort(std, axis = 0), axis = 1), axis = 0)
   return a[-samples:]
 
