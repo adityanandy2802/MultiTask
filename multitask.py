@@ -244,7 +244,7 @@ y3 = x**3
 y3 = y3.reshape(-1,1)
 y4 = torch.exp(x)
 y4 = y4.reshape(-1,1)
-y5 = torch.sin(x)
+y5 = torch.sin(5*x)
 y5 = y5.reshape(-1,1)
 
 list_ = []
